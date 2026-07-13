@@ -1,0 +1,48 @@
+[
+  {
+   "device_name": "AMD Radeon 890M Graphics",
+   "gpu_clock": "2900MHz",
+   "mem_clock": "1000MHz",
+   "temp": "62C",
+   "fan_speed": "CPU Fan",
+   "power_draw": "18W",
+   "gpu_util": "42%",
+   "encode_decode": "9%",
+   "mem_util": null,
+   "mem_total": "17179869184",
+   "mem_used": "3221225472",
+   "mem_free": "13958643712",
+   "processes" : [
+     {
+       "pid": "2141",
+       "cmdline": "/usr/lib/jellyfin-ffmpeg/ffmpeg -hwaccel vaapi -i \"input file.mkv\" output.mkv",
+       "kind": "graphic",
+       "user": "jellyfin",
+       "gpu_usage": "38%",
+       "gpu_mem_bytes_alloc": "1288490188",
+       "gpu_mem_usage": "7%",
+       "encode_decode": "22%"
+     },
+     {
+       "pid": "990",
+       "cmdline": "/usr/bin/ollama serve",
+       "kind": "compute",
+       "user": "ollama",
+       "gpu_usage": "4%",
+       "gpu_mem_bytes_alloc": "1932735283",
+       "gpu_mem_usage": "11%",
+       "encode_decode": "0%"
+     },
+     {
+       "pid": "31337",
+       "cmdline": null,
+       "kind": null,
+       "user": null,
+       "gpu_usage": null,
+       "gpu_mem_bytes_alloc": null,
+       "gpu_mem_usage": null,
+       "encode_decode": null
+     }
+   ]
+  }
+]

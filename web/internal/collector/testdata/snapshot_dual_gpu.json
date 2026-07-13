@@ -1,0 +1,46 @@
+[
+  {
+   "device_name": "AMD Radeon 890M Graphics",
+   "gpu_clock": "800MHz",
+   "mem_clock": null,
+   "temp": "51C",
+   "fan_speed": "CPU Fan",
+   "power_draw": null,
+   "gpu_util": "3%",
+   "encode_decode": "0%",
+   "mem_util": null,
+   "mem_total": "17179869184",
+   "mem_used": "536870912",
+   "mem_free": "16643998720",
+   "processes" : [
+   ]
+  },
+  {
+   "device_name": "AMD Radeon RX 7600",
+   "gpu_clock": "2655MHz",
+   "mem_clock": "2250MHz",
+   "temp": "74C",
+   "fan_speed": "1450RPM",
+   "power_draw": "163W",
+   "gpu_util": "97%",
+   "encode": "12%",
+   "decode": "5%",
+   "mem_util": "23%",
+   "mem_total": "8589934592",
+   "mem_used": "6442450944",
+   "mem_free": "2147483648",
+   "processes" : [
+     {
+       "pid": "40021",
+       "cmdline": "python3 train.py --backend rocm\t--batch 32",
+       "kind": "graphic & compute",
+       "user": "robert",
+       "gpu_usage": "95%",
+       "gpu_mem_bytes_alloc": "6174015488",
+       "gpu_mem_usage": "71%",
+       "encode": "0%",
+       "decode": "0%"
+     }
+   ]
+  }
+]

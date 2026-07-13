@@ -1,0 +1,45 @@
+leading garbage with stray closers } ] not-json at all
+[
+  {
+   "device_name": "Torture GPU A",
+   "gpu_util": "10%",
+   "processes" : [
+   ]
+  }
+]
+warn: inter-frame noise without any opening delimiters
+[
+  { "device_name": "Broken frame with trailing comma", }
+]
+[
+  {
+   "device_name": "Torture GPU B",
+   "gpu_clock": "1500MHz",
+   "temp": "60C",
+   "fan_speed": "55%",
+   "power_draw": "42W",
+   "gpu_util": "77%",
+   "encode": "1%",
+   "decode": "2%",
+   "mem_util": "40%",
+   "mem_total": "8589934592",
+   "mem_used": "3435973836",
+   "mem_free": "5153960756",
+   "processes" : [
+     {
+       "pid": "77",
+       "cmdline": "escaped \"quotes\" and a backslash \\ here",
+       "kind": "compute",
+       "user": "root",
+       "gpu_usage": "77%",
+       "gpu_mem_bytes_alloc": "1073741824",
+       "gpu_mem_usage": "12%",
+       "encode": null,
+       "decode": null
+     }
+   ]
+  }
+]
+[
+  {
+   "device_name": "truncated frame at EOF, never clos

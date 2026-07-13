@@ -1,0 +1,44 @@
+# nvtop-web — TrueNAS SCALE custom app
+#
+# Install: Apps → Discover Apps → ⋮ (top right) → Install via YAML,
+# paste this file, name the app (lowercase, e.g. "nvtop-web"), deploy.
+# Dashboard: http://<truenas-ip>:8085/
+#
+# Privileged settings, and what you lose by removing them:
+#   pid: host + SYS_PTRACE  → per-process GPU usage (nvtop reads host
+#                             processes' /proc/<pid>/fdinfo and uses kcmp).
+#                             Remove both to run device-metrics-only.
+#   devices: /dev/dri       → required for ANY GPU metrics (DRM render node).
+#   /etc/passwd, /etc/group → optional, read-only: shows usernames instead
+#                             of numeric UIDs in the process table.
+
+services:
+  nvtop-web:
+    # Tip: after the first pull, pin by digest instead of :latest
+    # (docker inspect --format '{{index .RepoDigests 0}}' ghcr.io/rborkow/nvtop-web:latest)
+    image: ghcr.io/rborkow/nvtop-web:latest
+    container_name: nvtop-web
+    restart: unless-stopped
+    init: true
+    pid: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE   # the only capability nvtop needs beyond defaults
+    security_opt:
+      - no-new-privileges:true
+    read_only: true  # service writes nothing; state is in-memory
+    devices:
+      - /dev/dri:/dev/dri
+    ports:
+      - "8085:8080"   # host:container — change 8085 if it collides
+    environment:
+      NVTOP_WEB_INTERVAL: "2s"
+      NVTOP_WEB_HISTORY: "1h"
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+
+# Device-only variant (smaller attack surface, no process table):
+# delete `pid: host` and the whole `cap_add:` block above. Everything
+# else stays the same — the dashboard will show device metrics only.

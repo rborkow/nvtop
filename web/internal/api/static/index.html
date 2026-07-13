@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nvtop-web</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232a78d6'/%3E%3Cpath d='M3 11l3-4 2.5 2.5L13 4' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --s-util:  #2a78d6;
+    --s-temp:  #1baf7a;
+    --s-vram:  #eda100;
+    --s-power: #008300;
+    --meter-track: #cde2fb;
+    --status-good: #0ca30c;
+    --status-warn: #fab219;
+    --status-crit: #d03b3b;
+    --banner-bg: #fbeaea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --ink-1: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-3: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --s-util:  #3987e5;
+      --s-temp:  #199e70;
+      --s-vram:  #c98500;
+      --s-power: #008300;
+      --meter-track: #184f95;
+      --banner-bg: #3a1d1d;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink-1);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 20px 40px; }
+
+  /* ---- header ---- */
+  header {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin: 4px 0 18px;
+  }
+  .wordmark { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+  .wordmark span { color: var(--ink-3); font-weight: 400; }
+  .updated { margin-left: auto; display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-size: 12.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-good); }
+  .dot.warn { background: var(--status-warn); }
+  .dot.crit { background: var(--status-crit); }
+
+  /* ---- disconnect banner ---- */
+  #banner {
+    display: none;
+    background: var(--banner-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--ink-1);
+  }
+  #banner.show { display: block; }
+  #banner b { font-weight: 600; }
+
+  /* ---- range chips ---- */
+  .ranges { display: flex; gap: 6px; margin-bottom: 14px; }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--ink-2);
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { color: var(--ink-1); font-weight: 600; border-color: var(--baseline); }
+  .chip:hover { color: var(--ink-1); }
+
+  /* ---- GPU section ---- */
+  .gpu-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 22px 0 10px; }
+  .gpu-name { font-size: 15px; font-weight: 650; }
+  .gpu-sub { color: var(--ink-3); font-size: 12.5px; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px 10px;
+    position: relative;
+  }
+  .card h3 {
+    margin: 0; font-size: 12.5px; font-weight: 500; color: var(--ink-2);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .card .val { margin-left: auto; font-size: 20px; font-weight: 650; color: var(--ink-1); }
+  .card .val small { font-size: 12px; font-weight: 400; color: var(--ink-3); margin-left: 2px; }
+  .card canvas { display: block; width: 100%; height: 120px; margin-top: 8px; }
+  .card .nodata {
+    height: 120px; margin-top: 8px; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3); font-size: 12.5px;
+  }
+
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 5;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 7px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.13);
+    padding: 5px 9px; font-size: 12px; white-space: nowrap;
+  }
+  .tooltip .tt-t { color: var(--ink-3); }
+  .tooltip .tt-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---- process table ---- */
+  .tablecard { margin-top: 14px; padding: 6px 0 2px; }
+  .tablecard h3 { padding: 8px 16px 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; font-weight: 500; color: var(--ink-3); font-size: 11.5px;
+    padding: 6px 10px; border-bottom: 1px solid var(--grid);
+  }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  th:first-child, td:first-child { padding-left: 16px; }
+  th:last-child, td:last-child { padding-right: 16px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.cmd { color: var(--ink-2); max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kind {
+    display: inline-block; border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 6px; font-size: 11px; color: var(--ink-2);
+  }
+  .meter {
+    display: inline-block; width: 52px; height: 5px; border-radius: 3px;
+    background: var(--meter-track); vertical-align: 2px; margin-left: 8px; overflow: hidden;
+  }
+  .meter i { display: block; height: 100%; background: var(--s-util); border-radius: 3px; }
+  .empty-row td { color: var(--ink-3); padding: 14px 16px; }
+
+  footer { margin-top: 22px; color: var(--ink-3); font-size: 12px; }
+  footer a { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="wordmark">nvtop-web <span>· GPU monitor</span></div>
+    <div class="updated"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></div>
+  </header>
+
+  <div id="banner"><b>Disconnected.</b> Can’t reach nvtop-web — retrying…</div>
+
+  <div class="ranges" id="ranges" role="group" aria-label="Time range">
+    <button class="chip" data-min="5">5 min</button>
+    <button class="chip" data-min="30" aria-pressed="true">30 min</button>
+    <button class="chip" data-min="60">1 hour</button>
+  </div>
+
+  <div id="gpus"></div>
+
+  <footer>
+    Data from <a href="api/metrics">/api/metrics</a> · history at <a href="api/history">/api/history</a> ·
+    powered by <a href="https://github.com/Syllo/nvtop">nvtop</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- state ---------- */
+const MAX_WINDOW_S = 3600;
+let rangeMin = 30;
+let intervalS = 2;
+let buffers = [];      // per GPU: array of {t, util, temp, memUsed, memTotal, power, enc, dec}
+let gpuMeta = [];      // per GPU: {name, shared}
+let latest = null;     // last /api/metrics payload
+let charts = [];       // per GPU: {util, temp, vram, power} Chart instances
+let pollTimer = null;
+let failing = false;
+
+const CHART_DEFS = [
+  { key: "util",  label: "GPU utilization", css: "--s-util",  unit: "%",  yMode: "pct" },
+  { key: "temp",  label: "Temperature",     css: "--s-temp",  unit: "°C", yMode: "temp" },
+  { key: "vram",  label: "VRAM used",       css: "--s-vram",  unit: "",   yMode: "vram" },
+  { key: "power", label: "Power draw",      css: "--s-power", unit: "W",  yMode: "auto" },
+];
+
+/* ---------- helpers ---------- */
+const $ = (s, el) => (el || document).querySelector(s);
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmtGiB = (b) => b == null ? "—" : (b / 1073741824).toFixed(1);
+const fmtPct = (v) => v == null ? "—" : Math.round(v).toString();
+const fmtTime = (t) => {
+  const d = new Date(t * 1000);
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+};
+function pointVal(p, key) {
+  if (key === "vram") return p.memUsed == null ? null : p.memUsed / 1073741824;
+  return p[key];
+}
+function fmtVal(key, v, meta) {
+  if (v == null) return "—";
+  if (key === "vram") return v.toFixed(1) + " GiB";
+  if (key === "temp") return Math.round(v) + " °C";
+  if (key === "util") return Math.round(v) + "%";
+  return Math.round(v) + " W";
+}
+
+/* ---------- chart ---------- */
+class Chart {
+  constructor(canvas, tooltip, def, gpuIdx) {
+    this.canvas = canvas;
+    this.tooltip = tooltip;
+    this.def = def;
+    this.gpuIdx = gpuIdx;
+    this.hoverT = null;
+    canvas.addEventListener("pointermove", (e) => this.onMove(e));
+    canvas.addEventListener("pointerleave", () => { this.hoverT = null; this.tooltip.style.display = "none"; this.draw(); });
+    new ResizeObserver(() => this.draw()).observe(canvas);
+  }
+
+  data() {
+    const now = Date.now() / 1000;
+    const from = now - rangeMin * 60;
+    return (buffers[this.gpuIdx] || []).filter(p => p.t >= from);
+  }
+
+  onMove(e) {
+    const pts = this.data();
+    if (!pts.length) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const { x0, x1 } = this.xspan(rect.width);
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left - this.PAD_L) / (rect.width - this.PAD_L - this.PAD_R)));
+    const t = x0 + frac * (x1 - x0);
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+    this.hoverT = best.t;
+    const v = pointVal(best, this.def.key);
+    this.tooltip.innerHTML = '<span class="tt-t">' + fmtTime(best.t) + '</span> · <span class="tt-v">' + fmtVal(this.def.key, v) + "</span>";
+    this.tooltip.style.display = "block";
+    const tipX = Math.min(rect.width - this.tooltip.offsetWidth - 4, Math.max(0, e.clientX - rect.left + 10));
+    this.tooltip.style.left = tipX + "px";
+    this.tooltip.style.top = (this.canvas.offsetTop + 4) + "px";
+    this.draw();
+  }
+
+  xspan(w) {
+    const now = Date.now() / 1000;
+    return { x0: now - rangeMin * 60, x1: now, w };
+  }
+
+  yspan(pts) {
+    const vals = pts.map(p => pointVal(p, this.def.key)).filter(v => v != null);
+    const mode = this.def.yMode;
+    if (mode === "pct") return { y0: 0, y1: 100, ticks: [0, 50, 100] };
+    if (mode === "vram") {
+      const tot = latest && latest.gpus[this.gpuIdx] && latest.gpus[this.gpuIdx].mem_total_bytes;
+      const cap = tot ? tot / 1073741824 : Math.max(1, ...vals, 0) * 1.25;
+      return { y0: 0, y1: cap, ticks: [0, cap / 2, cap], ref: tot ? cap : null };
+    }
+    if (mode === "temp") {
+      let lo = Math.min(...vals), hi = Math.max(...vals);
+      if (!vals.length) { lo = 0; hi = 100; }
+      lo = Math.floor(lo / 10) * 10 - 10; hi = Math.ceil(hi / 10) * 10 + 10;
+      lo = Math.max(0, lo);
+      return { y0: lo, y1: hi, ticks: [lo, (lo + hi) / 2, hi] };
+    }
+    let hi = vals.length ? Math.max(...vals) : 1;
+    hi = Math.max(1, Math.ceil(hi * 1.2));
+    const step = Math.pow(10, Math.floor(Math.log10(hi)));
+    hi = Math.ceil(hi / step) * step;
+    return { y0: 0, y1: hi, ticks: [0, hi / 2, hi] };
+  }
+
+  PAD_L = 34; PAD_R = 10; PAD_T = 6; PAD_B = 18;
+
+  draw() {
+    const c = this.canvas, dpr = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const pts = this.data();
+    const color = cssVar(this.def.css);
+    const surface = cssVar("--surface-1");
+    const { x0, x1 } = this.xspan(w);
+    const ys = this.yspan(pts);
+    const px = (t) => this.PAD_L + (t - x0) / (x1 - x0) * (w - this.PAD_L - this.PAD_R);
+    const py = (v) => this.PAD_T + (1 - (v - ys.y0) / (ys.y1 - ys.y0)) * (h - this.PAD_T - this.PAD_B);
+
+    // gridlines: hairline, solid, recessive
+    ctx.strokeStyle = cssVar("--grid");
+    ctx.lineWidth = 1;
+    ctx.font = "10.5px system-ui, sans-serif";
+    ctx.fillStyle = cssVar("--ink-3");
+    for (const tv of ys.ticks) {
+      const y = Math.round(py(tv)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(this.PAD_L, y); ctx.lineTo(w - this.PAD_R, y); ctx.stroke();
+      const lbl = this.def.yMode === "vram" ? tv.toFixed(ys.y1 >= 10 ? 0 : 1) : Math.round(tv);
+      ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(String(lbl), this.PAD_L - 5, y);
+    }
+    // x labels: sparse
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let i = 0; i <= 2; i++) {
+      const t = x0 + (i / 2) * (x1 - x0);
+      ctx.fillText(fmtTime(t), px(t) + (i === 0 ? 14 : i === 2 ? -14 : 0), h - this.PAD_B + 5);
+    }
+    // capacity reference line (VRAM total)
+    if (ys.ref != null) {
+      const y = Math.round(py(ys.ref)) + 0.5;
+      ctx.strokeStyle = cssVar("--baseline");
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(this.PAD_L, y); ctx.lineTo(w - this.PAD_R, y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // series: area wash + 2px line
+    const segs = [];
+    let cur = [];
+    for (const p of pts) {
+      const v = pointVal(p, this.def.key);
+      if (v == null) { if (cur.length) segs.push(cur); cur = []; }
+      else cur.push([px(p.t), py(v), p.t, v]);
+    }
+    if (cur.length) segs.push(cur);
+
+    for (const seg of segs) {
+      if (seg.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(seg[0][0], py(ys.y0));
+        for (const [x, y] of seg) ctx.lineTo(x, y);
+        ctx.lineTo(seg[seg.length - 1][0], py(ys.y0));
+        ctx.closePath();
+        ctx.globalAlpha = 0.1; ctx.fillStyle = color; ctx.fill(); ctx.globalAlpha = 1;
+      }
+      ctx.beginPath();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      seg.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.stroke();
+    }
+
+    // end-dot with surface ring
+    const lastSeg = segs[segs.length - 1];
+    if (lastSeg && lastSeg.length) {
+      const [x, y] = lastSeg[lastSeg.length - 1];
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = surface; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fillStyle = color; ctx.fill();
+    }
+
+    // hover: crosshair + marker
+    if (this.hoverT != null) {
+      let hp = null;
+      for (const seg of segs) for (const q of seg) if (q[2] === this.hoverT) hp = q;
+      if (hp) {
+        ctx.strokeStyle = cssVar("--baseline"); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(Math.round(hp[0]) + 0.5, this.PAD_T); ctx.lineTo(Math.round(hp[0]) + 0.5, h - this.PAD_B); ctx.stroke();
+        ctx.beginPath(); ctx.arc(hp[0], hp[1], 6, 0, 7); ctx.fillStyle = surface; ctx.fill();
+        ctx.beginPath(); ctx.arc(hp[0], hp[1], 4, 0, 7); ctx.fillStyle = color; ctx.fill();
+      }
+    }
+  }
+}
+
+/* ---------- DOM building ---------- */
+function buildSections(gpus) {
+  const root = $("#gpus");
+  root.innerHTML = "";
+  charts = [];
+  gpus.forEach((g, i) => {
+    const sec = document.createElement("section");
+    const name = g.device_name || "GPU " + i;
+    sec.innerHTML =
+      '<div class="gpu-head"><div class="gpu-name">' + esc(name) + '</div>' +
+      '<div class="gpu-sub" id="encdec' + i + '"></div></div>' +
+      '<div class="grid2" id="grid' + i + '"></div>' +
+      '<div class="card tablecard"><h3>Processes <span class="val" style="font-size:12.5px;font-weight:500" id="pcount' + i + '"></span></h3>' +
+      '<div style="overflow-x:auto"><table><thead><tr>' +
+      '<th>PID</th><th>User</th><th>Kind</th><th class="num">GPU</th><th class="num">Enc/Dec</th><th class="num">VRAM</th><th>Command</th>' +
+      '</tr></thead><tbody id="procs' + i + '"></tbody></table></div></div>';
+    root.appendChild(sec);
+
+    const grid = $("#grid" + i);
+    const set = {};
+    for (const def of CHART_DEFS) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = '<h3>' + def.label + '<span class="val" id="v-' + def.key + "-" + i + '">—</span></h3>';
+      const canvas = document.createElement("canvas");
+      const tip = document.createElement("div");
+      tip.className = "tooltip";
+      card.appendChild(canvas); card.appendChild(tip);
+      grid.appendChild(card);
+      set[def.key] = new Chart(canvas, tip, def, i);
+    }
+    charts.push(set);
+  });
+}
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+/* ---------- rendering ---------- */
+function renderLatest(m) {
+  m.gpus.forEach((g, i) => {
+    $("#v-util-" + i).innerHTML = fmtPct(g.gpu_util_pct) + "<small>%</small>";
+    $("#v-temp-" + i).innerHTML = g.temp_c == null ? "—" : Math.round(g.temp_c) + "<small>°C</small>";
+    $("#v-vram-" + i).innerHTML = fmtGiB(g.mem_used_bytes) + "<small>/ " + fmtGiB(g.mem_total_bytes) + " GiB</small>";
+    $("#v-power-" + i).innerHTML = g.power_draw_w == null ? "—" : Math.round(g.power_draw_w) + "<small>W</small>";
+
+    const ed = $("#encdec" + i);
+    if (g.encode_decode_shared) ed.textContent = "enc/dec " + fmtPct(g.encode_pct) + "%";
+    else ed.textContent = "enc " + fmtPct(g.encode_pct) + "% · dec " + fmtPct(g.decode_pct) + "%";
+    if (g.fan_note) ed.textContent += " · fan: " + g.fan_note.toLowerCase();
+    else if (g.fan_speed_rpm != null) ed.textContent += " · fan " + Math.round(g.fan_speed_rpm) + " rpm";
+    else if (g.fan_speed_pct != null) ed.textContent += " · fan " + Math.round(g.fan_speed_pct) + "%";
+
+    renderProcs(i, g.processes || []);
+  });
+}
+
+function renderProcs(i, procs) {
+  const tb = $("#procs" + i);
+  $("#pcount" + i).textContent = procs.length ? procs.length + " active" : "";
+  if (!procs.length) {
+    tb.innerHTML = '<tr class="empty-row"><td colspan="7">No processes are using the GPU right now.</td></tr>';
+    return;
+  }
+  const sorted = procs.slice().sort((a, b) => (b.gpu_usage_pct || 0) - (a.gpu_usage_pct || 0));
+  tb.innerHTML = sorted.map(p => {
+    const pct = p.gpu_usage_pct;
+    const encdec = (p.encode_pct == null && p.decode_pct == null) ? "—"
+      : fmtPct(p.encode_pct) + "% / " + fmtPct(p.decode_pct) + "%";
+    return "<tr>" +
+      '<td class="num">' + p.pid + "</td>" +
+      "<td>" + esc(p.user || "—") + "</td>" +
+      "<td>" + (p.kind ? '<span class="kind">' + esc(p.kind) + "</span>" : "—") + "</td>" +
+      '<td class="num">' + fmtPct(pct) + (pct == null ? "" : '%<span class="meter"><i style="width:' + Math.min(100, pct) + '%"></i></span>') + "</td>" +
+      '<td class="num">' + encdec + "</td>" +
+      '<td class="num">' + (p.gpu_mem_bytes == null ? "—" : fmtGiB(p.gpu_mem_bytes) + " GiB") + "</td>" +
+      '<td class="cmd" title="' + esc(p.cmdline || "") + '">' + esc(p.cmdline || "—") + "</td>" +
+      "</tr>";
+  }).join("");
+}
+
+function setStatus(status, ageS) {
+  const dot = $("#statusDot"), txt = $("#statusText");
+  dot.className = "dot";
+  if (status === "ok") { txt.textContent = "live · updated " + (ageS < 3 ? "now" : Math.round(ageS) + "s ago"); }
+  else if (status === "stale") { dot.classList.add("warn"); txt.textContent = "stale — last data " + Math.round(ageS) + "s ago"; }
+  else if (status === "no_gpu") { dot.classList.add("crit"); txt.textContent = "no GPU visible"; }
+  else { dot.classList.add("warn"); txt.textContent = status; }
+}
+
+function drawAll() { for (const set of charts) for (const k in set) set[k].draw(); }
+
+/* ---------- data flow ---------- */
+function appendPoint(m) {
+  const t = Date.parse(m.timestamp) / 1000;
+  m.gpus.forEach((g, i) => {
+    if (!buffers[i]) buffers[i] = [];
+    const buf = buffers[i];
+    if (buf.length && buf[buf.length - 1].t >= t) return;
+    buf.push({
+      t,
+      util: g.gpu_util_pct, temp: g.temp_c,
+      memUsed: g.mem_used_bytes, memTotal: g.mem_total_bytes,
+      power: g.power_draw_w, enc: g.encode_pct, dec: g.decode_pct,
+    });
+    const cutoff = Date.now() / 1000 - MAX_WINDOW_S;
+    while (buf.length && buf[0].t < cutoff) buf.shift();
+  });
+}
+
+async function backfill() {
+  try {
+    const r = await fetch("api/history?since=" + Math.floor(Date.now() / 1000 - MAX_WINDOW_S));
+    if (!r.ok) return;
+    const h = await r.json();
+    for (const pt of h.points || []) {
+      (pt.gpus || []).forEach((g, i) => {
+        if (!buffers[i]) buffers[i] = [];
+        buffers[i].push({
+          t: pt.ts, util: g.util, temp: g.temp,
+          memUsed: g.mem_used, memTotal: g.mem_total,
+          power: g.power, enc: g.enc, dec: g.dec,
+        });
+      });
+    }
+  } catch (e) { /* history is best-effort */ }
+}
+
+async function poll() {
+  try {
+    const r = await fetch("api/metrics");
+    const m = await r.json();
+    m.gpus = m.gpus || []; // defensive: pre-first-snapshot payloads
+    if (m.interval_seconds) intervalS = m.interval_seconds;
+    if (m.gpus && (!latest || latest.gpus.length !== m.gpus.length)) buildSections(m.gpus);
+    latest = m;
+    if (m.gpus && m.status !== "no_gpu") appendPoint(m);
+    renderLatest(m);
+    setStatus(m.status || "ok", m.age_seconds || 0);
+    $("#banner").classList.remove("show");
+    failing = false;
+  } catch (e) {
+    failing = true;
+    $("#banner").classList.add("show");
+    $("#statusDot").className = "dot crit";
+    $("#statusText").textContent = "disconnected";
+  }
+  drawAll();
+  pollTimer = setTimeout(poll, Math.max(1000, intervalS * 1000));
+}
+
+$("#ranges").addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip");
+  if (!btn) return;
+  rangeMin = Number(btn.dataset.min);
+  for (const c of $("#ranges").children) c.setAttribute("aria-pressed", c === btn ? "true" : "false");
+  drawAll();
+});
+
+(async function init() {
+  await backfill();
+  poll();
+})();
+</script>
+</body>
+</html>

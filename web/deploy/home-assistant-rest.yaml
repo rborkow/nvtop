@@ -1,0 +1,71 @@
+# Home Assistant REST sensors for nvtop-web
+#
+# Add to configuration.yaml (or an included rest: package), replace
+# <truenas-ip> with your NAS address and 8085 with the host port you
+# mapped in truenas-app.yaml, then restart HA or reload REST entities.
+#
+# One poll of /api/metrics feeds every sensor below. The availability
+# templates guard fields an iGPU may not report (power draw especially) —
+# a null from nvtop makes the sensor `unavailable` instead of `unknown`/0.
+
+rest:
+  - resource: http://<truenas-ip>:8085/api/metrics
+    scan_interval: 15
+    sensor:
+      - name: "NAS GPU Utilization"
+        unique_id: nas_gpu_util
+        value_template: "{{ value_json.gpus[0].gpu_util_pct | round(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:expansion-card
+        availability: "{{ value_json.gpus[0].gpu_util_pct is not none }}"
+
+      - name: "NAS GPU Temperature"
+        unique_id: nas_gpu_temp
+        value_template: "{{ value_json.gpus[0].temp_c | round(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ value_json.gpus[0].temp_c is not none }}"
+
+      - name: "NAS GPU VRAM Used"
+        unique_id: nas_gpu_vram_used
+        value_template: "{{ (value_json.gpus[0].mem_used_bytes / 2**20) | round(0) }}"
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        icon: mdi:memory
+        availability: "{{ value_json.gpus[0].mem_used_bytes is not none }}"
+
+      - name: "NAS GPU VRAM Total"
+        unique_id: nas_gpu_vram_total
+        value_template: "{{ (value_json.gpus[0].mem_total_bytes / 2**20) | round(0) }}"
+        unit_of_measurement: "MiB"
+        icon: mdi:memory
+        availability: "{{ value_json.gpus[0].mem_total_bytes is not none }}"
+
+      - name: "NAS GPU Power Draw"
+        unique_id: nas_gpu_power
+        value_template: "{{ value_json.gpus[0].power_draw_w | round(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: "{{ value_json.gpus[0].power_draw_w is not none }}"
+
+      - name: "NAS GPU Video Engine"
+        unique_id: nas_gpu_encdec
+        value_template: "{{ value_json.gpus[0].decode_pct | round(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:video
+        availability: "{{ value_json.gpus[0].decode_pct is not none }}"
+
+# Optional: a binary sensor that flips when the exporter itself is down
+# (REST sensors above go `unavailable` on their own when the app stops).
+#
+# binary_sensor:
+#   - platform: rest
+#     name: "NAS GPU Monitor Online"
+#     resource: http://<truenas-ip>:8085/healthz
+#     value_template: "{{ value_json.status == 'ok' }}"
+#     device_class: connectivity
+#     scan_interval: 60
