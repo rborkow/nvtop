@@ -68,6 +68,9 @@ func main() {
 				log.Printf("invalid nvtop frame: %s: %v", truncate(frame, 1024), err)
 				return err
 			}
+			if live, ok := source.(*collector.ExecSource); ok {
+				collector.FilterPID(&snapshot, live.Pid())
+			}
 			s.SetLatest(snapshot, store.Meta{LastUpdate: now, Status: "ok"})
 			return nil
 		},

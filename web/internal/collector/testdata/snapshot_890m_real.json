@@ -1,0 +1,48 @@
+[
+  {
+   "device_name": "AMD Radeon Graphics",
+   "gpu_clock": "617MHz",
+   "mem_clock": "1619MHz",
+   "temp": "41C",
+   "fan_speed": "CPU Fan",
+   "power_draw": "8W",
+   "gpu_util": "0%",
+   "encode_decode": "0%",
+   "mem_util": "50%",
+   "mem_total": "51511263232",
+   "mem_used": "25923584000",
+   "mem_free": "25587679232",
+   "processes" : [
+     {
+       "pid": "735069",
+       "cmdline": "/usr/lib/ollama/llama-server --model /root/.ollama/models/blobs/sha256-900dde62fb7ebe8a5a25e35d5b7633f403f226a310965fed51d50f5238ba145a --port 43709 --host 127.0.0.1 --no-webui --offline -c 65536 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --no-jinja --chat-template chatml --mmproj /root/.ollama/models/blobs/sha256-900dde62fb7ebe8a5a25e35d5b7633f403f226a310965fed51d50f5238ba145a --flash-attn auto -b 512 -ub 512 --context-shift --keep 4",
+       "kind": "graphic",
+       "user": "root",
+       "gpu_usage": null,
+       "gpu_mem_bytes_alloc": "3407872",
+       "gpu_mem_usage": "0%",
+       "encode_decode": "0%"
+     },
+     {
+       "pid": "838320",
+       "cmdline": "/usr/local/bin/nvtop -s -l -d 20",
+       "kind": "graphic",
+       "user": "root",
+       "gpu_usage": null,
+       "gpu_mem_bytes_alloc": "12288",
+       "gpu_mem_usage": "0%",
+       "encode_decode": "0%"
+     },
+     {
+       "pid": "843624",
+       "cmdline": "nvtop -s",
+       "kind": "graphic",
+       "user": "root",
+       "gpu_usage": null,
+       "gpu_mem_bytes_alloc": "12288",
+       "gpu_mem_usage": "0%",
+       "encode_decode": "0%"
+     }
+   ]
+  }
+]

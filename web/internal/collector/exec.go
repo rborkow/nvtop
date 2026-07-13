@@ -137,6 +137,16 @@ func (e *ExecSource) Next(ctx context.Context) ([]byte, error) {
 	}
 }
 
+// Pid returns the running child's PID, or -1 when no child is alive.
+func (e *ExecSource) Pid() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.cmd != nil && e.cmd.Process != nil {
+		return e.cmd.Process.Pid
+	}
+	return -1
+}
+
 func (e *ExecSource) Kill() {
 	e.mu.Lock()
 	cmd := e.cmd
