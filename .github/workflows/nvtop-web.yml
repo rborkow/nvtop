@@ -5,6 +5,9 @@ on:
     branches: [master]
     paths:
       - "web/**"
+      - "src/**"
+      - "include/**"
+      - "CMakeLists.txt"
       - ".github/workflows/nvtop-web.yml"
     tags: ["web-v*"]
   workflow_dispatch:
