@@ -58,6 +58,7 @@ func age(t time.Time) float64 {
 	}
 	return time.Since(t).Seconds()
 }
+
 // No CORS header on purpose: the dashboard is same-origin and Home Assistant
 // polls server-side, so a wildcard would only let arbitrary web origins pull
 // host process data through a LAN browser.
